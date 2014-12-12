@@ -21,6 +21,7 @@ bool esPrimo (int num) {
 
 void *productor (void *arg) {
 	int *args = (int *) arg, i;
+	srand ((unsigned) time(NULL));
 
 	for (i = 0; i < args[1]; i++) {
 		buffer[i % args[2]] = rand() % 100000;
