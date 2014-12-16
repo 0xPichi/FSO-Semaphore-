@@ -5,7 +5,8 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-int *buffer, sig_leer, tam_buffer, nnumeros ;
+int *buffer, sig_leer, tam_buffer, nnumeros;
+sem_t hay_dato, hay_espacio, mutex_leer;
 
 
 int string_to_int (char **argv, int i) {
@@ -31,11 +32,13 @@ bool esPrimo (int num) {
 }
 
 void *productor (void *arg) {
-	argumentos *args_consumidor = (argumentos *) arg, i;
+	int i;
 	srand ((unsigned) time(NULL));
 
-	for (i = 0; i < args_consumidor->n_numeros; i++) {
-		buffer[i % args_consumidor->tam_buffer] = rand() % 100000;
+	for (i = 0; i < nnumeros; i++) {
+		sem_wait(&hay_espacio);
+		buffer[i % tam_buffer] = rand() % 100000;
+		sem_post(&hay_dato);
 	}
 
 	pthread_exit(NULL);
@@ -43,24 +46,25 @@ void *productor (void *arg) {
 
 void *consumidor (void *arg) {
 	int id = *((int *) arg);
-	int dato;
+	int i, dato, producido_numero;
 
-	while (true) {
+
+	for(i = 0; i < nnumeros; i++) {
+		sem_wait(&hay_dato);
+		sem_wait($mutex_leer);
 		dato = buffer[sig_leer];
-		sig_leer = (sig_leer + 1) % TamBuffer;
-
+		sig_leer = (sig_leer + 1) % tam_buffer;
+		sem_post(&mutex_leer);
+		sem_post(%hay_espacio);
 		if (esPrimo(dato)) {
-			// Mensaje
+			printf("Hilo: %d , Valor producido numero: %d , Cantidad: %d , Es Primo.", id, producido_numero, dato);
 		}
 		else {
-			// Mensaje
+			printf("Hilo: %d , Valor producido numero: %d , Cantidad: %d , No es Primo.", id, producido_numero, dato);
 		}
 
-
-		if (sig_leer >= nnumeros) {
-			pthread_exit (NULL);
-		}
 	}
+	pthread_exit(NULL);
 
 }
 
@@ -88,7 +92,11 @@ int main (int argc, char *argv[]) {
 	}
 
 	
-	pthread_t productor, consumidor[args_programa.n_hilos];
+	pthread_t productor, consumidor[n_hilos];
+
+	sem_init(&mutex_leer, 0, 1);
+	sem_init(&hay_dato, 0, 0);
+	sem_init(&hay_espacio, 0, tam_buffer);
 
 	/* Creamos el hilo productor y los Nhilos consumidores 
 		usando num_hilo para pasar argumentos de forma segura */
@@ -100,6 +108,10 @@ int main (int argc, char *argv[]) {
 	}
 	for (i = 0; i < n_hilos; i++) {
 		pthread_create (&consumidor[i], NULL, consumidor, (void *) &id_hilo[i]);
+	}
+	pthread_join(&productor);
+	for(i = 0; i < n_hilos; i++){
+		pthread_join(&consumidor[i]);
 	}
 
 	return 0;
