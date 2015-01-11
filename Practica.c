@@ -31,7 +31,7 @@ bool esPrimo (int num) {
 	return true;
 }
 
-void *productor (void *arg) {
+void *produce (void *arg) {
 	int i;
 	srand ((unsigned) time(NULL));
 
@@ -44,28 +44,32 @@ void *productor (void *arg) {
 	pthread_exit(NULL);
 }
 
-void *consumidor (void *arg) {
+void *consume (void *arg) {
 	int id = *((int *) arg);
-	int i, dato, producido_numero;
+	int i, dato;
 
-
-	for(i = 0; i < nnumeros; i++) {
-		sem_wait(&hay_dato);
-		sem_wait($mutex_leer);
-		dato = buffer[sig_leer];
-		sig_leer = (sig_leer + 1) % tam_buffer;
+	while (true) {
+		sem_wait(&mutex_leer);
+		i = sig_leer;
+		sig_leer++;
 		sem_post(&mutex_leer);
-		sem_post(%hay_espacio);
+
+		if (!(i < nnumeros)) {
+			pthread_exit(NULL);
+		}
+		
+		sem_wait(&hay_dato);
+		dato = buffer[i % tam_buffer];
+		sem_post(&hay_espacio);
+
 		if (esPrimo(dato)) {
-			printf("Hilo: %d , Valor producido numero: %d , Cantidad: %d , Es Primo.", id, producido_numero, dato);
+			printf("Hilo: %d, Valor producido numero: %d, Cantidad: %d, Es primo.\n", id, i, dato);
 		}
 		else {
-			printf("Hilo: %d , Valor producido numero: %d , Cantidad: %d , No es Primo.", id, producido_numero, dato);
+			printf("Hilo: %d, Valor producido numero: %d, Cantidad: %d, No es primo.\n", id, i, dato);
 		}
-
+		i++;
 	}
-	pthread_exit(NULL);
-
 }
 
 int main (int argc, char *argv[]) {
@@ -75,12 +79,12 @@ int main (int argc, char *argv[]) {
 		exit(1);
 	}
 
-	
-	tam_buffer = string_to_int (argv, 3);
+	int n_hilos = string_to_int(argv, 1);
 	nnumeros = string_to_int (argv, 2);
+	tam_buffer = string_to_int (argv, 3);
 
 	if (tam_buffer > nnumeros/2) {
-		fprintf (stderr, "ERROR: El argumento TamBuffer es demasiado grande");
+		fprintf (stderr, "ERROR: El argumento TamBuffer es demasiado grande\n");
 		exit(3);
 	}
 
@@ -100,18 +104,19 @@ int main (int argc, char *argv[]) {
 
 	/* Creamos el hilo productor y los Nhilos consumidores 
 		usando num_hilo para pasar argumentos de forma segura */
-	pthread_create (&productor, NULL, productor, (void *) NULL);
-	int id_hilo[n_hilos];
+	pthread_create (&productor, NULL, produce, (void *) NULL);
+	int i, id_hilo[n_hilos];
 
-	for (i = 0; i < n_hilos ;i++) {
+	for (i = 0; i < n_hilos; i++) {
 		id_hilo[i] = i+1; 
 	}
 	for (i = 0; i < n_hilos; i++) {
-		pthread_create (&consumidor[i], NULL, consumidor, (void *) &id_hilo[i]);
+		pthread_create (&consumidor[i], NULL, consume, (void *) &id_hilo[i]);
 	}
-	pthread_join(&productor);
-	for(i = 0; i < n_hilos; i++){
-		pthread_join(&consumidor[i]);
+
+	pthread_join(productor, NULL);
+	for (i = 0; i < n_hilos; i++){
+		pthread_join(consumidor[i], NULL);
 	}
 
 	return 0;
