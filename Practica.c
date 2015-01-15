@@ -8,6 +8,9 @@
 int *buffer, sig_leer, tam_buffer, nnumeros;
 sem_t hay_dato, hay_espacio, mutex_leer;
 
+/* Metodo que convierte los argumentos recibidos por el main
+   en enteros, en caso de no poderse realizar, lanza un mensaje
+   de error y termina */
 
 int string_to_int (char **argv, int i) {
 	int arg;
@@ -20,6 +23,9 @@ int string_to_int (char **argv, int i) {
 	return arg;
 }
 
+/* Metodo booleano que recibe como argumento
+   un numero entero y calcula si el numero
+   es primo. */
 bool esPrimo (int num) {
 	int divs = 2;
 
@@ -31,12 +37,16 @@ bool esPrimo (int num) {
 	return true;
 }
 
+/*Metodo con el cual los hilos productores
+  producen los numeros aleatorios y los 
+  almacenan en el buffer circular.*/
+
 void *produce (void *arg) {
 	int i;
 	srand ((unsigned) time(NULL));
 
 	for (i = 0; i < nnumeros; i++) {
-		sem_wait(&hay_espacio);
+		sem_wait(&hay_espacio);							
 		buffer[i % tam_buffer] = rand() % 100000;
 		sem_post(&hay_dato);
 	}
@@ -44,17 +54,22 @@ void *produce (void *arg) {
 	pthread_exit(NULL);
 }
 
+/* Metodo con el cual los hilos consumidores
+   leen los datos del buffer circular e imprimen 
+   por pantalla su numero de hilo, el numero del
+   valor producido, el numero leido y si es primo o no.*/
+
 void *consume (void *arg) {
 	int id = *((int *) arg);
 	int i, dato;
 
 	while (true) {
-		sem_wait(&mutex_leer);
+		sem_wait(&mutex_leer);			
 		i = sig_leer;
 		sig_leer++;
 		sem_post(&mutex_leer);
-
-		if (!(i < nnumeros)) {
+										// Prescindimos de un semaforo que controle el sig_leer para en caso de que sea mayor 
+		if (!(i < nnumeros)) {			// que el nnumeros el hilo termnine sin quedarse bloqueado.
 			pthread_exit(NULL);
 		}
 		
@@ -79,8 +94,8 @@ int main (int argc, char *argv[]) {
 		exit(1);
 	}
 
-	int n_hilos = string_to_int(argv, 1);
-	nnumeros = string_to_int (argv, 2);
+	int n_hilos = string_to_int(argv, 1);				// Combertimos los parametros recibidos a valores enteros que almacenamos
+	nnumeros = string_to_int (argv, 2);					// en variables diferenciadas para facilitar su uso.
 	tam_buffer = string_to_int (argv, 3);
 
 	if (tam_buffer > nnumeros/2) {
@@ -98,25 +113,25 @@ int main (int argc, char *argv[]) {
 	
 	pthread_t productor, consumidor[n_hilos];
 
-	sem_init(&mutex_leer, 0, 1);
-	sem_init(&hay_dato, 0, 0);
-	sem_init(&hay_espacio, 0, tam_buffer);
+	sem_init(&mutex_leer, 0, 1);			//Semaforo inicializado a valor 1 encargado de la exclusion mutua.
+	sem_init(&hay_dato, 0, 0);				//Semaforo inicializado a 0 que permite el paso en caso de que halla datos en el buffer.
+	sem_init(&hay_espacio, 0, tam_buffer);	//Semaforo incializado al tamaño del buffer que permite el paso en caso de que halla datos en el buffer.
 
 	/* Creamos el hilo productor y los Nhilos consumidores 
-		usando num_hilo para pasar argumentos de forma segura */
+	   usando num_hilo para pasar argumentos de forma segura */
 	pthread_create (&productor, NULL, produce, (void *) NULL);
 	int i, id_hilo[n_hilos];
 
-	for (i = 0; i < n_hilos; i++) {
+	for (i = 0; i < n_hilos; i++) {							
 		id_hilo[i] = i+1; 
 	}
-	for (i = 0; i < n_hilos; i++) {
-		pthread_create (&consumidor[i], NULL, consume, (void *) &id_hilo[i]);
-	}
+	for (i = 0; i < n_hilos; i++) {												// Creamos nhilos consumidores almacenando sus referencias en un array
+		pthread_create (&consumidor[i], NULL, consume, (void *) &id_hilo[i]);	// para poder referirnos a ellos a traves del indice del array y crearlos 
+	}																			// de forma iterativa.
 
 	pthread_join(productor, NULL);
-	for (i = 0; i < n_hilos; i++){
-		pthread_join(consumidor[i], NULL);
+	for (i = 0; i < n_hilos; i++){												//Cada hilo consumidor espera a que el hilo anterior halla terminado o se
+		pthread_join(consumidor[i], NULL);										// halla quedado bloqueado en algun semaforo.
 	}
 
 	return 0;
