@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <math.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -23,18 +22,17 @@ int string_to_int (char **argv, int i) {
 	return arg;
 }
 
-/* Metodo booleano que recibe como argumento
-   un numero entero y calcula si el numero
-   es primo. */
-bool esPrimo (int num) {
+/* Calcula si un numero es primo*/
+
+int esPrimo (int num) {
 	int divs = 2;
 
 	while (divs <= sqrt (num)) {
-		if (num % divs == 0) { return false; }
+		if (num % divs == 0) { return 0; }
 		else { divs++; }
 	}
 
-	return true;
+	return 1;
 }
 
 /*Metodo con el cual los hilos productores
@@ -63,7 +61,7 @@ void *consume (void *arg) {
 	int id = *((int *) arg);
 	int i, dato;
 
-	while (true) {
+	while (1) {
 		sem_wait(&mutex_leer);			
 		i = sig_leer;
 		sig_leer++;
