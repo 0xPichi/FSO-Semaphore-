@@ -1,3 +1,6 @@
+// Sergio Delgado Álvarez
+// Alberto Amigo Alonso
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
